@@ -1,0 +1,13 @@
+node_modules/
+dist/
+
+# secrets and generated, per-event values
+appwrite/salts.json
+.env
+.env.*
+
+# generated snapshots (built from stage-defs by the setup script)
+modules-source/stage-[0-9][0-9]/
+
+*.log
+.DS_Store

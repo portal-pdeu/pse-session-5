@@ -1,0 +1,9 @@
+{
+  "name": "neoncart",
+  "version": "0.1.0",
+  "description": "NeonCart - the app our AI agents built. No external dependencies.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

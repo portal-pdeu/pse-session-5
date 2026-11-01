@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NeonCart Bug Hunt — How to Play</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0e14;
+    --panel: #12161f;
+    --panel2: #171c27;
+    --border: #232a38;
+    --ink: #d7dce6;
+    --ink-soft: #8b94a8;
+    --shade: #171c27;
+    --accent: #5eead4;
+    --accent-soft: rgba(94, 234, 212, 0.08);
+    --warm: #fbbf24;
+    --violet: #a78bfa;
+    --code: #0e1219;
+  }
+  html.light {
+    color-scheme: light;
+    --bg: #ffffff; --panel: #ffffff; --panel2: #f5f7fb; --border: #dfe3ec;
+    --ink: #1a1f2b; --ink-soft: #55607a; --shade: #f5f7fb;
+    --accent: #0d7a6b; --accent-soft: #e3f4f1; --warm: #b4530a; --violet: #6b3fd4;
+    --code: #f2f4f8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .page { max-width: 900px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  header { display: flex; align-items: flex-start; gap: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+  .kicker { letter-spacing: 2.5px; text-transform: uppercase; font-size: 11px; color: var(--accent); font-weight: 700; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 6px 0 4px; letter-spacing: -0.4px; }
+  .lede { color: var(--ink-soft); margin: 0; max-width: 60ch; font-size: 15px; }
+  .themebtn {
+    margin-left: auto; background: var(--shade); border: 1px solid var(--border); color: var(--ink-soft);
+    border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+  }
+  .themebtn:hover { color: var(--accent); border-color: var(--accent); }
+
+  h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--ink-soft);
+    margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+
+  ol.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+  ol.steps > li { counter-increment: s; position: relative; padding: 0 0 16px 40px; }
+  ol.steps > li::before {
+    content: counter(s); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: #06251f; display: grid; place-items: center; font-size: 12.5px; font-weight: 700;
+  }
+  ol.steps strong { display: block; margin-bottom: 3px; }
+  ol.steps p { margin: 4px 0; color: var(--ink-soft); font-size: 14px; max-width: 78ch; }
+
+  pre {
+    background: var(--code); color: var(--ink); border: 1px solid var(--border); border-radius: 8px;
+    padding: 11px 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; margin: 8px 0 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre code { font-family: inherit; }
+  code.inline {
+    background: var(--shade); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px;
+    font-size: 13px; color: var(--accent);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre code.inline { background: transparent; border: 0; padding: 0; color: inherit; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 6px; font-size: 14px; }
+  .card p { margin: 4px 0; color: var(--ink-soft); font-size: 13.5px; }
+  .card.tip { border-color: var(--accent); background: var(--accent-soft); }
+  .card.warm { border-color: var(--warm); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--shade); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); }
+  tr:last-child td { border-bottom: none; }
+  td b { color: var(--accent); }
+
+  .flag {
+    display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+    background: var(--panel2); color: var(--accent); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 7px; font-size: 13.5px;
+  }
+  .k { color: var(--warm); font-weight: 600; }
+
+  footer { margin-top: 26px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--ink-soft); font-size: 12.5px; }
+
+  @media print {
+    html, html.light { color-scheme: light; }
+    body { background: #fff; color: #1a1f2b; font-size: 10pt; }
+    .page { max-width: none; padding: 0; }
+    h1, strong, h3 { color: #1a1f2b; }
+    .lede, p, td, footer, .card p { color: #444c5e; }
+    .themebtn { display: none; }
+    .card { background: #fff; }
+    .card.tip { background: #f0fbf8; }
+    pre { background: #f4f6fa !important; color: #1a1f2b !important; }
+    code.inline { background: #f0f2f6; color: #0d7a6b; }
+    h2 { break-after: avoid; }
+    .grid > .card, ol.steps > li, table { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div>
+    <div class="kicker">How to play</div>
+    <h1>NeonCart Bug Hunt</h1>
+    <p class="lede">
+      A startup shipped an e-commerce platform written entirely by AI agents —
+      fast, confident, barely reviewed. The code is released to you one module at
+      a time. Your job: read it, run it, break it, and capture the flag the app
+      produces. Some flags are reached through bugs in the code.
+    </p>
+  </div>
+  <button class="themebtn" id="themebtn" type="button">☾ Dark</button>
+</header>
+
+<h2>The loop</h2>
+<ol class="steps">
+  <li>
+    <strong>Sign in to the portal</strong>
+    <p>Your facilitator gives you an account and the portal link. Use the email and password they provide; accounts are created by the admin.</p>
+  </li>
+  <li>
+    <strong>Wait for a module to open</strong>
+    <p>
+      The admins release modules one at a time. When a module is released, its
+      download opens for everyone. Each zip is the <em>whole app</em> at that
+      stage — nothing to assemble.
+    </p>
+  </li>
+  <li>
+    <strong>Download, unzip, run</strong>
+    <pre><code>unzip neoncart-v0.zip
+cd neoncart-v0
+PLAYER_SEED=your_seed_here node server.js</code></pre>
+    <p>Replace <code class="inline">your_seed_here</code> with your seed, or copy the complete command shown on the portal's Modules page. No install step is needed for the challenge app. Then open <code class="inline">http://localhost:3307</code>.</p>
+  </li>
+  <li>
+    <strong>Read the code, then use the app</strong>
+    <p>
+      The nav bar at the top of the app is the app's own menu. Read the source in
+      <code class="inline">src/routes/</code> — every module is one file, and the
+      bug is in there. Then try to trigger it from the browser.
+    </p>
+    <p>
+      <b>Module 00 is your warm-up:</b> the storefront prints a build key —
+      that is your first flag. Submit it and the loop is yours for the rest of
+      the session.
+    </p>
+  </li>
+  <li>
+    <strong>Capture the flag and submit it</strong>
+    <p>
+      The flag is printed by the running app when your exploit works. It looks
+      like <span class="flag">FLAG{0123456789}</span> — copy it into the flag box
+      on the portal's <b>Modules</b> tab and press <b>Submit</b>.
+    </p>
+  </li>
+</ol>
+
+<div class="card tip">
+  <h3>There is no flag hidden in the code</h3>
+  <p>
+    Grep will not find it. The flag is <em>generated</em> by the running app, on a
+    code path that only your exploit can reach — that is the whole point of the
+    challenge.
+  </p>
+</div>
+
+<h2>Where to look when you are stuck</h2>
+<div class="grid">
+  <div class="card">
+    <h3>The log tells you what the server did</h3>
+    <p>Three places, same content:</p>
+    <p>• the terminal the app runs in</p>
+    <p>• <code class="inline">logs/app.log</code> in the app folder</p>
+    <p>• <code class="inline">http://localhost:3307/logs</code> in the app</p>
+    <p>It prints what your input actually did — which keys were merged, which path was served, which branch ran.</p>
+  </div>
+  <div class="card">
+    <h3>Ask in the right order</h3>
+    <p>1. Read the module's one file in <code class="inline">src/routes/</code>.</p>
+    <p>2. Re-read the request your browser sent (the log shows it).</p>
+    <p>3. Ask the facilitator for a hint — there is no penalty for asking.</p>
+    <p>4. Read the code again, slower. The bug is one line.</p>
+  </div>
+</div>
+
+<h2>Points</h2>
+<table>
+  <tr><th>You do this</th><th>You get</th></tr>
+  <tr><td>Capture module 00</td><td><b>50</b> points</td></tr>
+  <tr><td>Capture module 01</td><td><b>100</b> points</td></tr>
+  <tr><td>Capture module 02</td><td><b>200</b> points</td></tr>
+  <tr><td>Capture module 03</td><td><b>350</b> points</td></tr>
+  <tr><td>Capture module 04</td><td><b>500</b> points</td></tr>
+  <tr><td>Capture module 05</td><td><b>700</b> points</td></tr>
+  <tr><td>Miss a flag</td><td>Three wrong attempts per module; ask the facilitator to reset them if needed</td></tr>
+</table>
+
+<div class="grid">
+  <div class="card warm">
+    <h3>House rules</h3>
+    <p>
+      Flags are unique to your account, so sharing one is pointless and provable.
+      Do not read other people's code or probe the portal or its backend. Work
+      only with the challenge app you downloaded, and do not stress other
+      players. Ask for hints early.
+    </p>
+  </div>
+</div>
+
+<h2>If something breaks</h2>
+<div class="grid">
+  <div class="card">
+    <h3>The app will not start</h3>
+    <p>Use the <code class="inline">PLAYER_SEED</code> command shown in the portal, or replace the placeholder seed in <code class="inline">config/player-license.json</code> with your own seed from the portal.</p>
+  </div>
+  <div class="card">
+    <h3>Port already in use</h3>
+    <p>Start it on another port: <code class="inline">PORT=3308 node server.js</code> and open that one.</p>
+  </div>
+  <div class="card">
+    <h3>Your flag is rejected</h3>
+    <p>Copy it without the surrounding text — the flag is exactly <span class="flag">FLAG{…}</span>. Uppercase <span class="k">FLAG</span>, braces included.</p>
+  </div>
+  <div class="card">
+    <h3>A released module still looks locked</h3>
+    <p>Press that module's <b>Refresh status</b> button in the portal. The portal does not continuously refresh release status.</p>
+  </div>
+</div>
+
+<footer>
+  Play individually · flags are unique per player · be excellent to each other.
+</footer>
+
+</div>
+<script>
+  (function () {
+    var btn = document.getElementById('themebtn');
+    var saved = localStorage.getItem('guide-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function label() { btn.textContent = document.documentElement.classList.contains('light') ? '☀ Light' : '☾ Dark'; }
+    label();
+    btn.addEventListener('click', function () {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('guide-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      label();
+    });
+  })();
+</script>
+</body>
+</html>

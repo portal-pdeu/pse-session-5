@@ -1,0 +1,346 @@
+================================================================================
+ PPT CONTEXT — "Security Crash Course" deck for the NeonCart Bug Hunt session
+ This file is the complete brief for an AI presentation generator.
+ Everything the generator needs is here; it does not need the repository.
+================================================================================
+
+--------------------------------------------------------------------------------
+1. WHAT THIS DECK IS FOR
+--------------------------------------------------------------------------------
+
+The deck is a 15-minute crash course that is shown to the students immediately
+before a live cybersecurity CTF session. After the deck, the room starts
+hunting bugs in a real application.
+
+The deck is the only theory the students get. It must be short, practical and
+confidence-building - a room full of nervous students who do not yet know what
+to look for is the single biggest risk to the session.
+
+DURATION      15 minutes (12-16 slides, roughly 45-60 seconds per slide)
+AUDIENCE      Students, mixed ability, probably 1-2 years of programming
+DELIVERY      Projected at the front of the room, presenter talks over it
+TONALITY      Encouraging, concrete, "you already know most of this". No
+              lecturing, no security jargon without a plain-English gloss
+LANGUAGE      English
+
+--------------------------------------------------------------------------------
+2. THE SESSION THE DECK PREPARES THEM FOR
+--------------------------------------------------------------------------------
+
+Fiction: a startup called NeonCart shipped an e-commerce platform written
+entirely by AI agents - fast, confident, barely reviewed. During the session
+the real source code is released to the students one module at a time. Each
+module is a complete runnable app the student downloads and runs on their own
+laptop. The student explores the app and captures the flag it produces; some
+flags are reached through bugs in the code.
+
+There are six modules, numbered 00 through 05, and each has a flag. The
+challenge names are Project Scaffold, Diagnostics, Support Tickets, Billing &
+Checkout, Profile & File Uploads, and Sessions & Tokens. Their difficulty
+increases over the session. The facilitator releases each module to everyone
+at once; there are no countdown unlocks, early unlocks, or bonus points.
+
+Each player receives an account before the session. They sign in to the portal,
+download a released module, run its complete app locally, and submit the flag
+in the portal. The challenge app needs Node.js; portal and Appwrite setup are
+handled by the facilitator before the session.
+
+--------------------------------------------------------------------------------
+3. SPOILER RULE - READ THIS FIRST
+--------------------------------------------------------------------------------
+
+The deck teaches the CONCEPTS. It must not reveal the specific bugs, the
+endpoints, the payloads or the flags of the challenges. If a student
+walks out of the deck able to solve module 05 without reading the code, the
+challenge is dead.
+
+Therefore:
+  - Use neutral, made-up examples for code snippets. Never use a NeonCart
+    endpoint, never show the actual vulnerable file, never show a flag.
+  - When a concept maps to a challenge ("this is the idea behind one of the
+    modules"), say only that, and say it vaguely: "one of today's modules is
+    exactly this mistake".
+  - Never print a flag-shaped string, not even a fake one.
+  - Do not describe the app's pages, its nav bar, its routes or its file layout.
+
+--------------------------------------------------------------------------------
+4. THE TECHNICAL CONTENT THAT MUST BE CORRECT
+--------------------------------------------------------------------------------
+
+Use these facts as-is. Do not invent behaviour the browser or Node does not
+have.
+
+4.1 What a request is
+  - The browser sends an HTTP request; the server sends back a response.
+  - A request has: a method (GET = read, POST = act/create), a path
+    (/api/items), optional query parameters (?id=2) and optionally a body
+    (JSON).
+  - A response has a status code (200 ok, 403 forbidden, 404 not found) and
+    usually a body, often JSON.
+  - Everything the browser sends can be changed by the person sitting in front
+    of it. That is the single most important idea in the whole deck.
+
+4.2 Query parameters and object ids
+  - /api/records?id=2 means "the record with id 2".
+  - Ids are usually sequential, so the ones you were not shown are easy to
+    find - you do not have to guess, you just count.
+  - Two endpoints can disagree about how careful they are: the list endpoint
+    may filter by owner while the detail endpoint does not check at all.
+
+4.3 JSON bodies and where they come from
+  - A JSON body looks like {"item_id":"sample-item","quantity":1,"amount":199}.
+  - It is assembled by the browser, from the page's JavaScript.
+  - Business logic bugs live here: if the server believes a number that came
+    from the browser, the player decides the price.
+  - The rule to teach: the server recomputes anything that matters - price,
+    quantity, role, permissions - and never trusts the client's copy.
+
+4.4 Paths, directories and ..
+  - A path is a route through folders: storage/uploads/image.png
+  - ".." means "one directory up".
+  - Servers build paths by joining a fixed base directory with user input.
+    If the result is not checked to still be inside the base directory, the
+    user can walk out of it.
+  - A file that is "private" only because of where it sits on disk is not
+    private.
+
+4.5 base64 is encoding, not encryption
+  - base64 turns bytes into text so they can travel in a URL or a header.
+  - Anyone can decode it. It protects nothing.
+  - base64url (used by tokens) swaps + and / for - and _ and drops the = padding.
+  - A structured token is usually a readable payload plus a signature:
+        <base64url payload>.<signature>
+  - The payload holds claims such as {"user_id":42,"role":"user"}.
+  - A signature exists to prove the server issued those claims. It is only
+    worth anything if the server actually checks it.
+  - Checking that a signature EXISTS proves nothing. A server that decodes the
+    payload and trusts it has no signature at all - it just has a field.
+  - This is the difference between "parsed" and "verified".
+
+4.6 Authentication vs authorization
+  - Authentication: who are you? (a session, a token, a password)
+  - Authorization: may you touch THIS record or do THIS thing? (ownership,
+    role, permissions)
+  - A perfectly authenticated user can still be reading someone else's data.
+    Most real breaches are authorization bugs, not authentication bugs.
+
+4.7 Logs
+  - The server usually writes down what it did with each request.
+  - A log line can show that a request resolved to a path outside its intended
+    folder - logs are one quick way to understand an unfamiliar codebase.
+    Avoid showing the real challenge log or file name.
+  - Where to look: the terminal the app runs in, a log file in the app folder,
+    and often a viewer page inside the app.
+
+4.8 The tools
+  curl https://example.test/api/items
+      read an endpoint
+  curl -s -X POST https://example.test/api/orders \
+       -H 'content-type: application/json' \
+       -d '{"item_id":"sample-item","quantity":1,"amount":1}'
+      send JSON
+  printf '%s' 'eyJ1c2VyX2lkIjo0Miwicm9sZSI6InVzZXIifQ==' | base64 -d
+      decode a token
+  Browser devtools: F12 -> Network (see and edit the requests the page
+      sends), Elements/View source (read the page's JavaScript),
+      Console (run JavaScript in the page).
+
+--------------------------------------------------------------------------------
+5. SLIDE PLAN
+--------------------------------------------------------------------------------
+
+Give the generator this structure. Keep each slide to one idea, one visual,
+and at most five lines of text. Speaker notes are optional but recommended -
+they are the presenter's script.
+
+S1  TITLE
+    "Break the app" (or "Reading code like an attacker")
+    Subtitle: NeonCart Bug Hunt - 15 minute crash course
+    Visual: dark terminal-like background, a single line of code with one
+    character highlighted in a warning colour. No hooded figures, no padlocks.
+
+S2  THE PREMISE (60 seconds)
+    - An AI wrote a whole e-commerce app in an afternoon.
+    - Nobody read it carefully.
+    - Today you get the real source, module by module, and you break it.
+    - Six flags are hiding across six modules.
+    - You will use Node.js to run each downloaded app locally.
+    - Your facilitator will provide a portal account and the portal link.
+    Speaker note: set the tone - this is a bug hunt, not an exam, and the
+    bugs are real bugs that a real AI really does write.
+
+S3  THE ONE RULE (60 seconds) - the spine of the whole deck
+    - The browser is on THEIR side.
+    - Every value the browser sends can be changed by the person sitting in
+      front of it.
+    - So: the server must recompute anything that matters.
+    Visual: two-column diagram - "what the browser claims" vs "what the
+    server should check". Keep it abstract, no real app.
+
+S4  WHAT A REQUEST IS (60 seconds)
+    - Method + path + parameters + body
+    - A response is a status code and usually JSON
+    Visual: one annotated request/response exchange as a code block, arrows
+    labelling method, path, query, body, status.
+
+S5  QUERY PARAMETERS AND IDS (60 seconds)
+    - /api/records?id=2
+    - Ids are sequential: if you can see 2 and 3, ask for 1
+    - The list endpoint may be careful while the detail endpoint is not
+    Visual: a URL broken into labelled parts, then a small "you were shown
+    #2, #3 ... try #1" panel.
+
+S6  JSON BODIES: WHO SENDS THEM (60 seconds)
+    - The page's JavaScript builds the body and the browser sends it
+    - If the server believes a number from the body, the player sets it
+    - Price, quantity, role, permissions: recompute them server-side
+    Visual: page -> JavaScript -> JSON body -> server, with the JSON body
+    drawn as a small editable card ("the player can rewrite this").
+
+S7  PATHS AND ".." (60 seconds)
+    - storage/uploads/avatar.png
+    - ".." = one directory up
+    - If a server joins user input onto a path and does not check that the
+      result is still inside the folder, the user walks out of it
+    Visual: a folder tree with a highlighted escape arrow going up and out.
+
+S8  BASE64 IS NOT ENCRYPTION (60 seconds)
+    - base64 = readable text, protects nothing
+    - base64url: - and _ instead of + and /, no = padding
+    - A token is often <payload>.<signature>
+    - The payload is readable by anyone
+    Visual: one encoded string with a bracket pointing at its decoded
+    counterpart.
+
+S9  PARSED vs VERIFIED (60 seconds)
+    - Parsing a token: reading what it claims
+    - Verifying: proving the server issued it
+    - A signature you never check is not a signature
+    - A role that lives in a token the user can edit is not a permission
+    Visual: two columns, "parsed" (trusting) vs "verified" (checking), with a
+    padlock drawn in grey on the left and green on the right.
+
+S10 AUTHENTICATION vs AUTHORIZATION (45 seconds)
+    - Authentication: who are you
+    - Authorization: may you touch this one
+    - Logged in and still reading someone else's data = the classic breach
+    Visual: two simple icons with one-line definitions, and a line
+    "most real bugs are in this column".
+
+S11 THE SERVER TALKS: LOGS (45 seconds)
+    - The server writes down what it did with your input
+    - A log line can show you the exact path, key or branch it took
+    - Fastest way to understand a codebase you have never seen
+    Visual: a terminal with three log lines, one of them highlighted.
+
+S12 YOUR TOOLKIT (45 seconds)
+    - curl, base64, devtools (Network, View source, Console)
+    - Show the three commands, copy-pasteable
+    Visual: a terminal block with the three commands, commented.
+
+S13 HOW TO WORK (45 seconds) - the process, not a spoiler
+    - Use the app like a customer first: click through, watch the log
+    - Then read the code like a reviewer: one file per module
+    - Ask what the server trusted, and what it never checked
+    - Ask the facilitators for hints - there is no penalty
+    Visual: a four-step loop: use -> read -> hypothesize -> try.
+
+S14 RULES OF THE ROOM (30 seconds)
+    - Individual play, one account each
+    - Flags are unique to you, so sharing one is pointless
+    - Only investigate the downloaded challenge app; do not probe the portal,
+      its backend or other people's machines
+    - Be excellent to each other
+    Visual: short list, calm typography.
+
+S15  CLOSING (30 seconds)
+    - The code is real, the bugs are real, the flags are real
+    - Submit each flag in the portal
+    - The facilitator tracks the scores
+    - The first module is released when the session begins
+    Visual: the six module numbers appear one at a time, with no countdown.
+
+--------------------------------------------------------------------------------
+6. DESIGN SYSTEM
+--------------------------------------------------------------------------------
+
+COLOURS (match the session's app so the deck and the tool look like one thing)
+  background   #0b0e14   near-black, slightly blue
+  surface      #12161f   cards and panels
+  border       #232a38   hairlines
+  text         #d7dce6   body copy
+  muted        #8b94a8   captions, labels
+  accent       #5eead4   teal - the primary accent, use sparingly
+  accent 2     #22d3ee   cyan - secondary highlights
+  warning      #fbbf24   amber - the "look here" colour
+  danger       #f87171   red - only for a genuinely wrong thing
+  violet       #a78bfa   one accent, for the "and" concept
+
+  Rules: one accent per slide, 90/10 split of text-to-accent, no pure white,
+  no pure black, no saturated gradients, no glow orbs, no glassmorphism.
+
+TYPE
+  Display: a bold grotesque (Inter, Space Grotesk, or Archivo). Sentence case.
+  Mono: JetBrains Mono or Fira Code for code, commands, URLs and log lines.
+  Body: 18-20pt minimum. Code: 16-18pt. Never below 14pt.
+  Left align everything. No justified text. Sentence case for all headings -
+  no Title Case, no ALL CAPS except short labels.
+
+LAYOUT
+  16:9. One idea per slide. Headline states the insight, not the topic
+  ("the browser is on their side", not "trust boundaries").
+  Max five lines of text per slide. Diagrams over bullet lists.
+  Code blocks: dark surface, 1px border, no syntax-highlight rainbow - two
+  colours at most (normal, and the highlighted character or word in amber).
+  Consistent header band: small teal label above the headline.
+  Slide numbers bottom right, muted.
+
+IMAGERY
+  Abstract, technical, and honest: terminal fragments, folder trees, HTTP
+  exchanges, base64 strings, folder structures. No stock photography, no
+  hooded figures, no padlock-and-chain clichés, no skull motifs, no green
+  matrix rain, no globe with lines, no dramatic "hacker" stock imagery.
+
+--------------------------------------------------------------------------------
+7. WHAT NOT TO DO
+--------------------------------------------------------------------------------
+
+  - Do not reveal any NeonCart endpoint, file, route, page or flag
+  - Do not show a working exploit payload
+  - Do not use the word "vulnerability" more than twice - say "bug" or
+    "mistake" instead; it is friendlier and equally precise
+  - Do not mention OWASP, CVEs, CVSS scores or tool names the students will
+    not use today
+  - Do not show a terminal that is mostly empty - every screenshot should
+    look like it contains real output
+  - Do not use more than two colours of emphasis on a slide
+  - Do not cram a code listing onto a slide; show three to six lines only
+  - Do not end with a wall of text - the closing slide is three lines
+
+--------------------------------------------------------------------------------
+8. ACCURACY CHECKLIST FOR THE GENERATOR
+--------------------------------------------------------------------------------
+
+Before delivering, verify:
+  [ ] base64 is described as encoding, never as encryption
+  [ ] the base64url characters are shown correctly (- and _, not + and /)
+  [ ] a token is described as payload + signature, and the signature is
+      described as UNVERIFIED in at least one example
+  [ ] the "server recomputes" rule appears in the request slide and again in
+      the JSON body slide
+  [ ] the difference between authentication and authorization is stated
+      correctly and separately
+  [ ] no real endpoint, file name, flag or payload from the live session
+      appears anywhere
+  [ ] every slide has a single idea and no more than five lines of text
+  [ ] the closing slide promises the first module drop, and nothing more
+
+--------------------------------------------------------------------------------
+9. OPTIONAL EXTRA (only if the presenter asks for it)
+--------------------------------------------------------------------------------
+
+A one-page handout with the same content in compact form: the four concepts
+(request, id, body, path), the base64 command, the three devtools panels, and
+the four-step loop. It must stay free of spoilers in the same way as the deck.
+
+================================================================================

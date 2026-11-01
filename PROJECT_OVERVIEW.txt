@@ -1,0 +1,176 @@
+NEONCART BUG HUNT — PROJECT OVERVIEW
+====================================
+
+CURRENT ARCHITECTURE
+--------------------
+
+This project runs a six-module, individual-play security CTF. Facilitators
+release each module to all players at once. Each release makes a cumulative
+NeonCart application snapshot downloadable; players run it locally, find the
+flag, and submit it through the portal.
+
+  portal/             Player-facing React + TypeScript site, hosted as static
+                       files on Cloudflare Pages.
+  admin/               Facilitator panel. Run locally on the facilitator's
+                       machine; it holds the Appwrite server API key.
+  appwrite/            Project setup, database schema, storage uploads, and
+                       the flag-check Function.
+  modules-source/
+    stage-defs/        Editable base application and per-module additions.
+    stage-NN/          Generated cumulative snapshots uploaded to Appwrite.
+    tools/             Snapshot builder.
+  docs/                Player guide, facilitator solutions, and presentation
+                       brief.
+
+The old Express service under server/ has been retired. Do not confuse it with
+admin/server/, which contains local Vite middleware, or the downloaded
+challenge application's server.js, which is part of the NeonCart exercise.
+
+SERVICES AND TRUST BOUNDARIES
+-----------------------------
+
+Appwrite Cloud provides Authentication, TablesDB, Storage, and the `ctf`
+Function. There is no separate hosted API service.
+
+  * A facilitator creates player accounts in the local admin panel. It gives
+    each account the `player` label and creates a private row with a random
+    seed, score, solve count, and wrong-attempt counters.
+  * Players sign into the portal with email and password. The portal uses the
+    public Appwrite endpoint and project ID; neither is a secret.
+  * The portal calls the `ctf` Function to submit flags. The Function verifies
+    the caller's Appwrite session and player label, checks release state,
+    derives the expected flag using the player's seed and module salt, and updates the
+    player's solve and score records.
+  * Stage zips in Appwrite Storage are downloadable only while their module is
+    released. Locking a module closes access again.
+  * The Appwrite server API key belongs only in appwrite/.env and admin/.env.
+    Never put it in portal/.env, a browser bundle, a stage archive, or git.
+
+Module salts are generated per event with `npm run salts` and written to the
+gitignored appwrite/salts.json; they are never committed. The salts are
+deployed to the Function's settings and injected into the challenge snapshots
+by the builder. The endpoint and project id are read from each folder's .env
+(see env.sample); no project values are committed. Appwrite's Web platform list
+must include the portal's hostname for browser requests to work.
+
+MODULES AND SCORING
+-------------------
+
+Every module has one per-player flag and a fixed score. There are no countdowns,
+early unlocks, speed bonuses, or player-visible leaderboard.
+
+  00  Project Scaffold          50 points
+  01  Diagnostics              100 points
+  02  Support Tickets          200 points
+  03  Billing & Checkout       350 points
+  04  Profile & File Uploads   500 points
+  05  Sessions & Tokens        700 points
+                              -----
+  Maximum score               1900 points
+
+The module names, descriptions, and scores are seeded from appwrite/schema.mjs
+and copied into portal/src/modules.ts for display. A test checks that these
+lists match. Each module allows three wrong flag attempts by default; a
+facilitator can reset attempts per module or for all modules.
+
+SETUP
+-----
+
+Requirements: Node.js 22 or newer and an Appwrite Cloud project with email /
+password sign-in enabled. Add a Web platform for localhost during local work,
+and the Pages hostname for production.
+
+Provision Appwrite:
+
+  cd appwrite
+  npm install
+  cp env.sample .env       # set APPWRITE_API_KEY; never commit .env
+  npm run setup            # database, tables, permissions, module rows, zips
+  npm run deploy            # deploy the flag-check Function
+  npm run check
+
+Run the facilitator panel in a separate terminal:
+
+  cd admin
+  npm install
+  cp env.sample .env       # set the same server API key
+  npm run dev               # http://127.0.0.1:3000
+
+The panel is local-only. Create player accounts, release or lock modules, view
+the leaderboard, reset attempts, or clear the session. A progress reset keeps
+accounts; a full reset also deletes player accounts.
+
+Run the portal locally:
+
+  cd portal
+  npm install
+  npm run dev               # http://localhost:5174
+
+Sign in with an account created in the admin panel. The admin and portal each
+use their own env.sample. The portal only needs VITE_APPWRITE_ENDPOINT and
+VITE_APPWRITE_PROJECT_ID when overriding the project defaults.
+
+PORTAL DEPLOYMENT
+-----------------
+
+For manual Cloudflare Pages deployment, build locally and upload portal/dist/
+(or its contents) as a Direct Upload project:
+
+  cd portal
+  npm install
+  npm run build
+
+The built portal defaults to the project configured in portal/src/appwrite.ts.
+If using a different Appwrite endpoint, set the VITE_ variables before the
+build and update portal/public/_headers so its CSP connect-src allows that
+endpoint. Add the deployed hostname as an Appwrite Web platform. The site is a
+static single-page app; no Pages Function is required. Direct Upload projects
+cannot later be switched to Git integration.
+
+BUILDING AND UPLOADING CHALLENGE SNAPSHOTS
+------------------------------------------
+
+Edit modules-source/stage-defs/base-stage-00/ for the scaffold and
+modules-source/stage-defs/extras/stage-NN/ for each later module. Do not edit
+the generated modules-source/stage-NN/ folders by hand.
+
+Module salts live in the gitignored appwrite/salts.json (`npm run salts`
+creates them). Rebuild snapshots and refresh the uploaded stage archives with:
+
+  node modules-source/tools/build-stages.mjs
+  cd appwrite && npm run setup -- --refresh-stages
+
+The builder overlays each module's additions on the previous snapshot and
+injects that module's salt. The setup command uploads the resulting zips; an
+already released module stays released when setup is rerun.
+
+PLAYER FLOW
+-----------
+
+  1. The facilitator gives each player a portal link, email, and password.
+  2. The player signs in and copies the personal seed shown on the Modules page.
+  3. The facilitator releases a module. The player refreshes its status and
+     downloads the zip when it is open.
+  4. The zip contains a complete app in a neoncart-vN/ folder. From that folder,
+     replace `your_seed_here` in `PLAYER_SEED=your_seed_here node server.js`
+     with that seed, then open http://localhost:3307.
+     Alternatively, put the seed in config/player-license.json.
+  5. The player finds the flag in the running app and submits it on that
+     module's portal card. The Function accepts only released modules and
+     only one solve per player per module.
+
+TESTS AND CHECKS
+----------------
+
+  cd appwrite && npm test       unit tests for flag checks and portal data
+  cd admin && npm test          admin operations and local middleware tests
+  cd portal && npm run typecheck
+  cd admin && npm run typecheck
+
+Live Appwrite tests create temporary records/accounts and remove them again;
+run only when you intend to use the configured project:
+
+  cd appwrite && npm run test:live
+  cd admin && npm run test:live
+
+Use appwrite/.env and admin/.env respectively for the live-test API key.

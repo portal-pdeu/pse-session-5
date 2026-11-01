@@ -1,0 +1,4 @@
+{
+  "seed": "PASTE_YOUR_SEED_FROM_THE_PORTAL",
+  "note": "Replace the seed with your own from the CTF portal (or start the app with PLAYER_SEED=<seed>). Every flag is derived from it, so flags are unique to you - sharing yours is cheating."
+}

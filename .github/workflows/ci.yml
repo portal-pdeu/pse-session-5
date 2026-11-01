@@ -1,0 +1,43 @@
+name: CI
+
+# Runs on every push and pull request. It never talks to the real Appwrite
+# project: no API key is needed or used here.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            appwrite/package-lock.json
+            admin/package-lock.json
+            portal/package-lock.json
+
+      - name: Install
+        run: |
+          npm ci --prefix appwrite
+          npm ci --prefix admin
+          npm ci --prefix portal
+
+      - name: Flag check, stage apps and build check tests
+        run: npm test --prefix appwrite
+
+      - name: Admin panel tests
+        run: npm test --prefix admin
+
+      - name: Portal build (typecheck, bundle, secret and header check)
+        env:
+          VITE_APPWRITE_ENDPOINT: https://cloud.appwrite.io/v1
+          VITE_APPWRITE_PROJECT_ID: ci-placeholder
+        run: npm run build --prefix portal
